@@ -1,10 +1,43 @@
+
+import { Routes, Route } from "react-router-dom";
+
+import { Layout } from "./components/layout/Layout";
+
+import { Dashboard } from "./pages/Dashboard";
+import { Projects } from "./pages/Projects";
+import { Members } from "./pages/Members";
+import { Profile } from "./pages/Profile";
+
+import { Login } from "./pages/Login";
+import { Register } from "./pages/Register";
+
+import { ProjectNew } from "./pages/ProjectNew";
+import { ProjectDetails } from "./pages/ProjectDetails";
+import { ProjectEdit } from "./pages/ProjectEdit";
+
+import { NotFound } from "./pages/NotFound";
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <h1 className="text-4xl font-bold text-blue-600">
-        TaskFlow
-      </h1>
-    </div>
+    <Routes>
+      {/* Authentication */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+
+      {/* Main Layout */}
+      <Route element={<Layout />}>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/projects" element={<Projects />} />
+        <Route path="/projects/new" element={<ProjectNew />} />
+        <Route path="/projects/:id/edit" element={<ProjectEdit />} />
+        <Route path="/projects/:id" element={<ProjectDetails />} />
+        <Route path="/members" element={<Members />} />
+        <Route path="/profile" element={<Profile />} />
+      </Route>
+
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
 }
 
