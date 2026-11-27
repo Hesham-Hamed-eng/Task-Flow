@@ -1,14 +1,31 @@
 
+import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { useData } from "../context/DataContext";
 
+import type { Task } from "../types";
+
 import { Badge } from "../components/ui/Badge";
+import { TaskForm } from "../components/tasks/TaskForm";
+import { KanbanBoard } from "../components/tasks/KanbanBoard";
+
+interface TaskFormData {
+  title: string;
+  description: string;
+  priority: Task["priority"];
+  status: Task["status"];
+  dueDate: string;
+  assigneeId: string;
+}
 
 export function ProjectDetails() {
   const { id } = useParams();
 
-  const { projects, members, tasks } = useData();
+  const { projects, members, tasks, setTasks } = useData();
+
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | undefined>();
 
   const project = projects.find((item) => item.id === id);
 
@@ -53,11 +70,60 @@ export function ProjectDetails() {
     high: "red",
   } as const;
 
-  const taskStatusColors = {
-    todo: "gray",
-    "in-progress": "yellow",
-    done: "green",
-  } as const;
+  const handleTaskSubmit = (data: TaskFormData) => {
+    if (editingTask) {
+      setTasks(
+        tasks.map((task) =>
+          task.id === editingTask.id
+            ? { ...task, ...data }
+            : task
+        )
+      );
+    } else {
+      const newTask: Task = {
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        ...data,
+      };
+
+      setTasks([...tasks, newTask]);
+    }
+
+    setShowTaskForm(false);
+    setEditingTask(undefined);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setShowTaskForm(true);
+  };
+
+  const handleDeleteTask = (taskId: string) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this task?"
+    );
+
+    if (!confirmed) return;
+
+    setTasks(tasks.filter((task) => task.id !== taskId));
+  };
+  const handleStatusChange = (
+  taskId: string,
+  newStatus: Task["status"]
+) => {
+  setTasks(
+    tasks.map((task) =>
+      task.id === taskId
+        ? { ...task, status: newStatus }
+        : task
+    )
+  );
+};
+
+  const handleCancelTaskForm = () => {
+    setShowTaskForm(false);
+    setEditingTask(undefined);
+  };
 
   return (
     <div className="space-y-6">
@@ -135,47 +201,93 @@ export function ProjectDetails() {
       </div>
 
       <div className="rounded-xl bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-semibold text-gray-800">
-          Project Tasks ({projectTasks.length})
-        </h2>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-800">
+              Project Tasks ({projectTasks.length})
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-500">
+              Manage and track your project tasks.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setEditingTask(undefined);
+              setShowTaskForm(true);
+            }}
+            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+          >
+            Add New Task
+          </button>
+        </div>
+
+        {showTaskForm && (
+          <div className="mb-6 rounded-xl border border-gray-200 p-5">
+            <h3 className="mb-4 text-lg font-semibold text-gray-800">
+              {editingTask ? "Edit Task" : "Create New Task"}
+            </h3>
+
+            <TaskForm
+              members={projectMembers}
+              initialData={editingTask}
+              onSubmit={handleTaskSubmit}
+              onCancel={handleCancelTaskForm}
+            />
+          </div>
+        )}
 
         {projectTasks.length > 0 ? (
-          <div className="space-y-3">
-            {projectTasks.map((task) => {
-              const assignee = members.find(
-                (member) => member.id === task.assigneeId
-              );
+        <KanbanBoard
+  tasks={projectTasks}
+  members={projectMembers}
+  onStatusChange={handleStatusChange}
+/>
+        ) : (
+          <p className="py-8 text-center text-sm text-gray-400">
+            No tasks assigned to this project yet.
+          </p>
+        )}
 
-              return (
+        {projectTasks.length > 0 && (
+          <div className="mt-6 border-t border-gray-200 pt-5">
+            <h3 className="mb-3 font-semibold text-gray-800">
+              Task Actions
+            </h3>
+
+            <div className="space-y-2">
+              {projectTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-4"
+                  className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 p-3"
                 >
-                  <div>
-                    <h3 className="font-medium text-gray-800">
-                      {task.title}
-                    </h3>
+                  <span className="text-sm font-medium text-gray-700">
+                    {task.title}
+                  </span>
 
-                    <p className="mt-1 text-sm text-gray-500">
-                      Assigned to: {assignee?.name ?? "Unassigned"}
-                    </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleEditTask(task)}
+                      className="rounded-md bg-blue-50 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-100"
+                    >
+                      Edit
+                    </button>
 
-                    <p className="mt-1 text-sm text-gray-500">
-                      Due Date: {task.dueDate}
-                    </p>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="rounded-md bg-red-50 px-3 py-1.5 text-sm text-red-600 hover:bg-red-100"
+                    >
+                      Delete
+                    </button>
                   </div>
-
-                  <Badge color={taskStatusColors[task.status]}>
-                    {task.status}
-                  </Badge>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        ) : (
-          <p className="text-sm text-gray-400">
-            No tasks assigned to this project.
-          </p>
         )}
       </div>
 
